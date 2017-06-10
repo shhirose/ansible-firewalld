@@ -1,0 +1,20 @@
+FROM centos:7
+
+ARG ANSIBLE_VERSION
+
+RUN set -x \
+  && yum update -y \
+  && yum install -y \
+         gcc-core \
+         gcc-g++ \
+         python \
+         python-devel \
+         python-paramiko \
+         python-crypto \
+         binutils \
+         openssl \
+         openssl-devel \
+         openssh \
+         libffi-devel \
+  && curl -kL https://bootstrap.pypa.io/get-pip.py | python \
+  && if [ "${ANSIBLE_VERSION}" = "latest" ]; then pip install ansible; else pip install ansible\==${ANSIBLE_VERSION}; fi
