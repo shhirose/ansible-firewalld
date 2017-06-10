@@ -1,0 +1,10 @@
+---
+- name: Set rich rule
+  firewalld:
+    rich_rule: "{{ item.rule }}"
+    zone: "{{ item.zone | default(omit) }}"
+    immediate: "{{ item.immediate | default(True) }}"
+    permanent: "{{ item.permanent | default(False) }}"
+    state: "{{ item.state }}"
+  with_items: "{{ shhirose_firewalld.rich_rules | default([]) }}"
+

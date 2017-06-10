@@ -1,0 +1,254 @@
+---
+language: python
+
+python:
+  - 2.7
+
+services:
+  - docker
+
+sudo: required
+
+env:
+  matrix:
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=latest
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.3.0
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.2.3
+
+install:
+  - sudo docker pull ${os}:${version}
+  - sudo docker build --file tests/travis/Dockerfile.${os}${version} --tag=${os}${version}:ansible tests/travis --build-arg ANSIBLE_VERSION=${ANSIBLE_VERSION}
+
+script:
+  - sudo docker run -dt --privileged --volume="${PWD}":/temp/ansible-firewalld ${os}${version}:ansible /sbin/init > "${container_id}"
+
+
+  # add-zone
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-zone.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-zone.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-zone.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --list-all --zone=test01 && (echo "" && exit 0) || (echo 'zone add faild' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --list-all --zone=test02 && (echo "" && exit 0) || (echo 'zone add faild' && exit 1)
+
+
+  # set-default_zone
+  # Error occurs at first run with Docker
+  #- sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-default_zone.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  #- sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-default_zone.yml -i /temp/ansible-firewalld/tests/inventory
+  #- sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-default_zone.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  #- sudo docker exec -t "$(cat ${container_id})" firewall-cmd --get-default-zone | grep -q 'home' && (echo "" && exit 0) || (echo 'default-zone set faild' && exit 1)
+
+
+  # set-target
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-target.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-target.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/set-target.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --get-target --zone=home --permanent | grep -q 'DROP' && (echo "" && exit 0) || (echo 'target set faild' && exit 1)
+
+
+  # add-interface
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-interface=eth901 --zone=test01 && (echo "" && exit 0) || (echo 'interface add faild' && exit 1)
+
+  # remove-interface
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-interface=eth901 --zone=test01 && (echo "interface remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-masquerade
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-masquerade --zone=test01 && (echo "" && exit 0) || (echo 'masquerade set faild' && exit 1)
+
+  # remove-masquerade
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-masquerade --zone=test01 && (echo "masquerade remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-service
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-service=http --zone=test01 && (echo "" && exit 0) || (echo 'service add faild' && exit 1)
+
+  # remove-service
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-service=http --zone=test01 && (echo "service remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-port
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-port=8080/tcp --zone=test01 && (echo "" && exit 0) || (echo 'port add faild' && exit 1)
+
+  # remove-port
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-port=8080/tcp --zone=test01 && (echo "port remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-source
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-source=172.16.0.0/16 --zone=test01 && (echo "" && exit 0) || (echo 'source add faild' && exit 1)
+
+  # remove-source
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-source=172.16.0.0/16 --zone=test01 && (echo "source remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-rich-rule
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-rich-rule="rule family="ipv4" source address="192.168.0.0/16" port port="22" protocol="tcp" accept" --zone=test01 && (echo "" && exit 0) || (echo 'rich-rule add faild' && exit 1)
+
+  # remove-rich-rule
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-rich-rule="rule family="ipv4" source address="192.168.0.0/16" port port="22" protocol="tcp" accept" --zone=test01 && (echo "rich-rule remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-forward_port
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-forward-port="port=14001:proto=tcp:toport=14002:toaddr=10.255.255.254" --zone=test01 && (echo "" && exit 0) || (echo 'forward port add faild' && exit 1)
+
+  # remove-forward_port
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-forward-port="port=14001:proto=tcp:toport=14002:toaddr=10.255.255.254" --zone=test01 && (echo "forward port remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-icmp-block
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-icmp-block=echo-request --zone=test01 && (echo "" && exit 0) || (echo 'icmp-block add faild' && exit 1)
+
+  # remove-icmp-block
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-icmp-block=echo-request --zone=test01 && (echo "icmp-block remove faild" && exit 1) || (echo '' && exit 0)
+
+
+  # add-interface-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-interface=eth902 --zone=test02 --permanent && (echo "" && exit 0) || (echo 'interface add faild' && exit 1)
+
+  # remove-interface-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-interface-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-interface=eth902 --zone=test02 --permanent && (echo "interface remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-masquerade-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-masquerade --zone=test02 --permanent && (echo "" && exit 0) || (echo 'masquerade set faild' && exit 1)
+
+  # remove-masquerade-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-masquerade-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-masquerade --zone=test02 --permanent && (echo "masquerade remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-service-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-service=http --zone=test02 --permanent && (echo "" && exit 0) || (echo 'service add faild' && exit 1)
+
+  # remove-service-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-service-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-service=http --zone=test02 --permanent && (echo "service remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-port-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-port=8080/tcp --zone=test02 --permanent && (echo "" && exit 0) || (echo 'port add faild' && exit 1)
+
+  # remove-port-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-port-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-port=8080/tcp --zone=test02 --permanent && (echo "port remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-source-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-source="172.16.0.0/16" --zone=test02 --permanent && (echo "" && exit 0) || (echo 'rich-rule add faild' && exit 1)
+
+  # remove-source-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-source-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-source="172.16.0.0/16" --zone=test02 --permanent && (echo "rich-rule remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-rich-rule-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-rich-rule="rule family="ipv4" source address="192.168.0.0/16" port port="22" protocol="tcp" accept" --zone=test02 --permanent && (echo "" && exit 0) || (echo 'rich-rule add faild' && exit 1)
+
+  # remove-rich-rule-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-rich-rule-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-rich-rule="rule family="ipv4" source address="192.168.0.0/16" port port="22" protocol="tcp" accept" --zone=test02 --permanent && (echo "rich-rule remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-forward_port-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-forward-port="port=14001:proto=tcp:toport=14002:toaddr=10.255.255.254" --zone=test02 --permanent && (echo "" && exit 0) || (echo 'forward port add faild' && exit 1)
+
+  # remove-forward_port-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-forward_port-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-forward-port="port=14001:proto=tcp:toport=14002:toaddr=10.255.255.254" --zone=test02 --permanent && (echo "forward port remove faild" && exit 1) || (echo '' && exit 0)
+
+  # add-icmp-block-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/add-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-icmp-block=echo-request --zone=test02 --permanent && (echo "" && exit 0) || (echo 'icmp-block add faild' && exit 1)
+
+  # remove-icmp-block-permanent
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-icmp-block-permanent.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --query-icmp-block=echo-request --zone=test02 --permanent && (echo "icmp-block remove faild" && exit 1) || (echo '' && exit 0)
+
+
+  # remove-zone
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-zone.yml -i /temp/ansible-firewalld/tests/inventory --syntax-check
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-zone.yml -i /temp/ansible-firewalld/tests/inventory
+  - sudo docker exec -t "$(cat ${container_id})" ansible-playbook /temp/ansible-firewalld/tests/travis/remove-zone.yml -i /temp/ansible-firewalld/tests/inventory | grep -q 'changed=0.*failed=0' && (echo "" && exit 0) || (echo 'Changed or failed after retry' && exit 1)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --list-all --zone=test01 && (echo "zone remove faild" && exit 1) || (echo "" && exit 0)
+  - sudo docker exec -t "$(cat ${container_id})" firewall-cmd --list-all --zone=test02 && (echo "zone remove faild" && exit 1) || (echo "" && exit 0)
+
+
+after_script:
+  - sudo docker stop "$(cat ${container_id})"
+
+  - sudo docker rm "$(cat ${container_id})"

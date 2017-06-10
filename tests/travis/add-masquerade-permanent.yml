@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  become_user: root
+  roles:
+    - ../../../ansible-firewalld
+  vars:
+    - shhirose_firewalld:
+        masquerades:
+            - masquerade: yes
+              zone: test02
+              immediate: no
+              permanent: True

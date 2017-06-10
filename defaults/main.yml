@@ -1,0 +1,69 @@
+---
+shhirose_firewalld:
+  default_zone: public
+
+  zones: []
+    #  - zone: xxx1
+    #    state: enabled
+
+  interfaces: []
+    #  - interface: eth3
+    #    zone: xxx1
+    #    immediate: yes
+    #    permanent: True
+    #    state: enabled
+
+  tergets: []
+    #  - target: no
+    #    zone: public
+
+  masquerades: []
+    #  - masquerade: no
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+
+  services: []
+    #  - service: http
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled
+
+  ports: []
+    #  - port: ""
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled
+
+  rich_rules: []
+    #  - rule: ""
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled
+
+  icmp_blocks: []
+    #  - type: ""
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled
+
+  sources: []
+    #  - source: ""
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled
+
+  forward_ports: []
+    #  - proto: "tcp"
+    #    port: 80
+    #    toaddr: ""
+    #    toport: 80
+    #    zone: public
+    #    immediate: yes
+    #    permanent: False
+    #    state: enabled

@@ -1,0 +1,12 @@
+---
+- hosts: localhost
+  become_user: root
+  roles:
+    - ../../../ansible-firewalld
+  vars:
+    - shhirose_firewalld:
+        zones:
+            - zone: test01
+              state: enabled
+            - zone: test02
+              state: enabled

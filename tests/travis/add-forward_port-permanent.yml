@@ -1,0 +1,16 @@
+---
+- hosts: localhost
+  become_user: root
+  roles:
+    - ../../../ansible-firewalld
+  vars:
+    - shhirose_firewalld:
+        forward_ports:
+            - port: "14001"
+              proto: tcp
+              toport: "14002"
+              toaddr: 10.255.255.254
+              zone: test02
+              immediate: no
+              permanent: True
+              state: enabled

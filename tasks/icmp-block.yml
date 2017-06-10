@@ -1,0 +1,29 @@
+---
+- name: Get current icmp-block
+  shell: firewall-cmd --list-icmp-blocks{% if item.zone is defined %} --zone={{ item.zone }}{% endif %}{% if item.permanent | default(False) %} --permanent{% endif %}
+  register: icmp_block_list
+  when: item.immediate | default(True) or item.permanent | default(False)
+  with_items: "{{ shhirose_firewalld.icmp_blocks | default([]) }}"
+  changed_when: False
+
+- name: Add icmp-block
+  shell: firewall-cmd --add-icmp-block={{ item.item.type }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.state == "enabled" and item.item.type not in item.stdout
+  with_items: "{{ icmp_block_list.results | default([]) }}"
+
+- name: Remove icmp-block
+  shell: firewall-cmd --remove-icmp-block={{ item.item.type }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.state == "disabled" and item.item.type in item.stdout
+  with_items: "{{ icmp_block_list.results | default([]) }}"
+
+- name: Add icmp-block permanent
+  shell: firewall-cmd --add-icmp-block={{ item.item.type }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.permanent | default(False) and item.item.state == "enabled" and item.item.type not in item.stdout
+  with_items: "{{ icmp_block_list.results | default([]) }}"
+  notify: Reload firewalld
+
+- name: Remove icmp-block permanent
+  shell: firewall-cmd --remove-icmp-block={{ item.item.type }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.permanent | default(False) and item.item.state == "disabled" and item.item.type in item.stdout
+  with_items: "{{ icmp_block_list.results | default([]) }}"
+  notify: Reload firewalld

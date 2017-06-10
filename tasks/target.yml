@@ -1,0 +1,14 @@
+---
+- name: Get current target
+  shell: firewall-cmd --get-target --zone={{ item.zone }} --permanent
+  with_items: "{{ shhirose_firewalld.targets | default([]) }}"
+  register: target_list
+  changed_when: False
+  notify: Reload firewalld
+
+- name: Set target
+  shell: firewall-cmd --set-target={{ item.item.target }} --zone={{ item.item.zone }} --permanent
+  when: item.stdout != item.item.target
+  with_items: "{{ target_list.results | default([]) }}"
+  notify: Reload firewalld
+

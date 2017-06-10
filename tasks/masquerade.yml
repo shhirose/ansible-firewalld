@@ -1,0 +1,30 @@
+---
+- name: Get current masquerade
+  shell: firewall-cmd --query-masquerade{% if item.zone is defined %} --zone={{ item.zone }}{% endif %}{% if item.permanent | default(False) %} --permanent{% endif %}
+  register: masquerade_list
+  when: item.immediate | default(True) or item.permanent | default(False)
+  with_items: "{{ shhirose_firewalld.masquerades | default([]) }}"
+  changed_when: False
+  ignore_errors: True
+
+- name: Add masquerade
+  shell: firewall-cmd --add-masquerade{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.masquerade == True and item.stdout == "no"
+  with_items: "{{ masquerade_list.results | default([]) }}"
+
+- name: Remove masquerade
+  shell: firewall-cmd --remove-masquerade{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.masquerade == False and item.stdout == "yes"
+  with_items: "{{ masquerade_list.results | default([]) }}"
+
+- name: Add masquerade permanent
+  shell: firewall-cmd --add-masquerade{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.permanent | default(False) and item.item.masquerade == True and item.stdout == "no"
+  with_items: "{{ masquerade_list.results | default([]) }}"
+  notify: Reload firewalld
+
+- name: Remove masquerade permanent
+  shell: firewall-cmd --remove-masquerade{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.permanent | default(False) and item.item.masquerade == False and item.stdout == "yes"
+  with_items: "{{ masquerade_list.results | default([]) }}"
+  notify: Reload firewalld

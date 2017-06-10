@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  become_user: root
+  roles:
+    - ../../../ansible-firewalld
+  vars:
+    - shhirose_firewalld:
+        icmp_blocks:
+            - type: echo-request
+              zone: test01
+              immediate: yes
+              permanent: False
+              state: disabled

@@ -1,0 +1,28 @@
+---
+- name: check support OS
+  debug: msg="This OS is not supported"
+  failed_when: ansible_os_family != "RedHat"
+  tags:
+    - firewalld
+    - system
+    - security
+    - install
+
+- include: "{{ ansible_os_family }}.yml"
+  when: ansible_os_family == "RedHat"
+  tags:
+    - firewalld
+    - system
+    - security
+    - install
+
+- include: "setup.yml"
+  tags:
+    - firewalld
+    - security
+    - setup
+
+- shell: firewall-cmd --list-all-zones
+  changed_when: False
+  tags:
+    - firewalld

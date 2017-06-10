@@ -1,0 +1,10 @@
+---
+- name: Set interfaces
+  firewalld:
+    interface: "{{ item.interface }}"
+    zone: "{{ item.zone | default(omit) }}"
+    immediate: "{{ item.immediate | default(True) }}"
+    permanent: "{{ item.permanent | default(False) }}"
+    state: "{{ item.state }}"
+  with_items: "{{ shhirose_firewalld.interfaces | default([]) }}"
+

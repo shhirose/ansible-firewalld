@@ -1,0 +1,30 @@
+---
+- name: Get current forward-port
+  shell: firewall-cmd --list-forward-ports{% if item.zone is defined %} --zone={{ item.zone }}{% endif %}{% if item.permanent | default(False) %} --permanent{% endif %}
+  register: forward_port_list
+  when: item.immediate | default(True) or item.permanent | default(False)
+  with_items: "{{ shhirose_firewalld.forward_ports | default([]) }}"
+  changed_when: False
+
+- name: Add forward-port
+  shell: firewall-cmd --add-forward-port=port={{ item.item.port }}:proto={{ item.item.proto }}:toport={{ item.item.toport }}:toaddr={{ item.item.toaddr }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.state == "enabled" and item.item.immediate | default(True) and 'port={0}:proto={1}:toport={2}:toaddr={3}'.format(item.item.port, item.item.proto, item.item.toport, item.item.toaddr) not in item.stdout
+  with_items: "{{ forward_port_list.results | default([]) }}"
+
+- name: Remove forward-port
+  shell: firewall-cmd --remove-forward-port=port={{ item.item.port }}:proto={{ item.item.proto }}:toport={{ item.item.toport }}:toaddr={{ item.item.toaddr }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.state == "disabled" and item.item.immediate | default(True) and 'port={0}:proto={1}:toport={2}:toaddr={3}'.format(item.item.port, item.item.proto, item.item.toport, item.item.toaddr) in item.stdout
+  with_items: "{{ forward_port_list.results | default([]) }}"
+
+- name: Add forward-port permanent
+  shell: firewall-cmd --add-forward-port=port={{ item.item.port }}:proto={{ item.item.proto }}:toport={{ item.item.toport }}:toaddr={{ item.item.toaddr }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.state == "enabled" and item.item.permanent | default(False) and 'port={0}:proto={1}:toport={2}:toaddr={3}'.format(item.item.port, item.item.proto, item.item.toport, item.item.toaddr) not in item.stdout
+  with_items: "{{ forward_port_list.results | default([]) }}"
+  notify: Reload firewalld
+
+- name: Remove forward-port permanent
+  shell: firewall-cmd --remove-forward-port=port={{ item.item.port }}:proto={{ item.item.proto }}:toport={{ item.item.toport }}:toaddr={{ item.item.toaddr }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %} --permanent
+  when: item.item.state == "disabled" and item.item.permanent | default(False) and 'port={0}:proto={1}:toport={2}:toaddr={3}'.format(item.item.port, item.item.proto, item.item.toport, item.item.toaddr) in item.stdout
+  with_items: "{{ forward_port_list.results | default([]) }}"
+  notify: Reload firewalld
+

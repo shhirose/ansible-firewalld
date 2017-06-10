@@ -1,0 +1,9 @@
+---
+- name: Get current default zone
+  shell: firewall-cmd --get-default-zone
+  register: default_zone
+  changed_when: False
+
+- name: Set default zone
+  shell: firewall-cmd --set-default-zone={{ shhirose_firewalld.default_zone }}
+  when: shhirose_firewalld.default_zone is defined and default_zone.stdout != shhirose_firewalld.default_zone

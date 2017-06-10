@@ -1,0 +1,42 @@
+---
+- name: Get current zones
+  shell: firewall-cmd --get-zones --permanent
+  register: zone_list
+  changed_when: False
+
+- name: Create zone
+  shell: firewall-cmd --new-zone={{ item.zone }} --permanent
+  register: required_force_restart
+  when: item.zone not in zone_list.stdout and item.state == 'enabled'
+  with_items: "{{ shhirose_firewalld.zones | default([]) }}"
+  notify: Reload firewalld
+ 
+- name: Force restart firewalld
+  shell: firewall-cmd --reload
+  when: required_force_restart.changed
+
+- include: "default-zone.yml"
+
+- include: "target.yml"
+
+- include: "interface.yml"
+
+- include: "service.yml"
+
+- include: "port.yml"
+
+- include: "rich-rule.yml"
+
+- include: "source.yml"
+
+- include: "masquerade.yml"
+
+- include: "forward-port.yml"
+
+- include: "icmp-block.yml"
+
+- name: Delete zone
+  shell: firewall-cmd --delete-zone={{ item.zone }} --permanent
+  when: item.zone in zone_list.stdout and item.state == 'disabled'
+  with_items: "{{ shhirose_firewalld.zones | default([]) }}"
+  notify: Reload firewalld

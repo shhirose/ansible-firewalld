@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  become_user: root
+  roles:
+    - ../../../ansible-firewalld
+  vars:
+    - shhirose_firewalld:
+        rich_rules:
+            - rule: 'rule family="ipv4" source address="192.168.0.0/16" port protocol="tcp" port="22" accept'
+              zone: test01
+              immediate: yes
+              permanent: False
+              state: enabled

@@ -1,0 +1,29 @@
+---
+- name: Get current source
+  shell: firewall-cmd --list-sources{% if item.zone is defined %} --zone={{ item.zone }}{% endif %}{% if item.permanent | default(False) %} --permanent{% endif %}
+  register: sources_list
+  when: item.immediate | default(True) or item.permanent | default(False)
+  with_items: "{{ shhirose_firewalld.sources | default([]) }}"
+  changed_when: False
+
+# firwalld module is not supported non-permanent of source
+- name: Add source
+  shell: firewall-cmd --add-source={{ item.item.source }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.state == "enabled" and item.item.source not in item.stdout
+  with_items: "{{ sources_list.results | default([]) }}"
+
+# firwalld module is not supported non-permanent of source
+- name: Remove source
+  shell: firewall-cmd --remove-source={{ item.item.source }}{% if item.item.zone is defined %} --zone={{ item.item.zone }}{% endif %}
+  when: item.item.immediate | default(True) and item.item.state == "disabled" and item.item.source in item.stdout
+  with_items: "{{ sources_list.results | default([]) }}"
+
+- name: Set source permanent
+  firewalld:
+    source: "{{ item.source }}"
+    zone: "{{ item.zone | default(omita) }}"
+    immediate: "{{ item.immediate | default(omita) }}"
+    permanent: "{{ item.permanent | default(omita) }}"
+    state: "{{ item.state }}"
+  when: item.permanent | default(False)
+  with_items: "{{ shhirose_firewalld.sources | default([]) }}"
