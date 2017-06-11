@@ -1,12 +1,15 @@
 # ansible-firewalld
 
+[![Build Status](https://travis-ci.org/shhirose/ansible-firewalld.svg?branch=master)](https://travis-ci.org/shhirose/ansible-firewalld)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+
 This is Ansible role for firewalld install and setting for RedHat Enterprise Linux.
 
 ## Requirements
 
 None
 
-## Role Variables
+## Role Variables Sample
 
 ```yaml
 shhirose_firewalld:
