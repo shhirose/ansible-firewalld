@@ -252,3 +252,6 @@ after_script:
   - sudo docker stop "$(cat ${container_id})"
 
   - sudo docker rm "$(cat ${container_id})"
+
+notification:
+  webhooks: https://galaxy.ansible.com/api/v1/notifications/
