@@ -1,6 +1,6 @@
 galaxy_info:
   author: Shigeki Hirose
-  description: This is Ansible role for Firewalld install and setting for RedHat Enterprise Linux, Ubuntu and Debian.
+  description: This is Ansible role for Firewalld install and setting for RedHat Enterprise Linux.
   license: MIT
   min_ansible_version: 2.2
   platforms:
