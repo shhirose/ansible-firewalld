@@ -12,6 +12,9 @@ sudo: required
 env:
   matrix:
     - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=latest
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.4.3
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.4.0
+    - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.3.3
     - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.3.0
     - os=centos version=7 container_id=$(mktemp) ANSIBLE_VERSION=2.2.3
 
@@ -253,5 +256,5 @@ after_script:
 
   - sudo docker rm "$(cat ${container_id})"
 
-notification:
+notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/
